@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OSRM foot 動作確認</title>
+<style>
+body{font-family:monospace;background:#0f0f0f;color:#e0e0e0;padding:16px;max-width:800px}
+h1{color:#c0a060;margin-bottom:4px}
+p.note{font-size:11px;color:#888;margin:0 0 16px}
+button{background:#3a2a1a;color:#d4a050;border:1px solid #8a6a3a;border-radius:5px;padding:8px 16px;font-size:13px;cursor:pointer}
+button:hover{background:#4a3a2a}
+button:disabled{opacity:.5;cursor:default}
+#status{margin:12px 0;min-height:24px;font-size:12px;color:#c8e060}
+#result{white-space:pre-wrap;word-break:break-all;background:#1a1a1a;border:1px solid #3a3a3a;border-radius:5px;padding:12px;font-size:11px;line-height:1.6}
+.section{margin-top:16px;border-top:1px solid #2a2a2a;padding-top:12px}
+.label{font-size:10px;color:#888;margin-bottom:4px}
+.val{font-size:14px;color:#e0e0d0}
+.order-item{padding:2px 0;font-size:12px}
+.order-item.start{color:#a0c0e0}
+.order-item.store{color:#d4c870}
+.err{color:#e07060}
+</style>
+</head>
+<body>
+<h1>OSRM foot 動作確認</h1>
+<p class="note">routing.openstreetmap.de/routed-foot — trip API (roundtrip=false, source=first)</p>
+
+<div>
+<div class="label">スタート地点</div>
+<div class="val">🚩 新川屋佐々木酒店（人形町） 35.6845, 139.7842</div>
+</div>
+<div class="section">
+<div class="label">テスト店舗（入力順）</div>
+<div id="inputList"></div>
+</div>
+
+<div class="section">
+<button id="runBtn" onclick="run()">OSRM /trip を foot で実行</button>
+<div id="status"></div>
+</div>
+
+<div id="resultArea" style="display:none">
+<div class="section">
+<div class="label">リクエスト URL</div>
+<div id="reqUrl" class="val" style="font-size:11px;word-break:break-all"></div>
+</div>
+<div class="section">
+<div class="label">最適化後の訪問順</div>
+<div id="orderList"></div>
+</div>
+<div class="section" style="display:flex;gap:24px">
+<div><div class="label">総距離</div><div class="val" id="dist">-</div></div>
+<div><div class="label">徒歩時間</div><div class="val" id="time">-</div></div>
+</div>
+<div class="section">
+<div class="label">OSRM レスポンス JSON (waypoints のみ)</div>
+<div id="result"></div>
+</div>
+</div>
+
+<script>
+const OSRM = "https://routing.openstreetmap.de/routed-foot";
+
+const START = {n:"新川屋佐々木酒店（スタート）", la:35.6845, lo:139.7842};
+
+const STORES = [
+  {n:"室町砂場", la:35.687, lo:139.7728},
+  {n:"亀とみ", la:35.6867, lo:139.774},
+  {n:"ホテルかずさや", la:35.6898, lo:139.7746},
+  {n:"JUSTA BURGER", la:35.6885, lo:139.7745},
+  {n:"三重テラス", la:35.6868, lo:139.7718},
+];
+
+// 入力リスト表示
+const inputList = document.getElementById("inputList");
+STORES.forEach((s,i) => {
+  const d = document.createElement("div");
+  d.className = "order-item store";
+  d.textContent = `[${i}] ${s.n}  (${s.la}, ${s.lo})`;
+  inputList.appendChild(d);
+});
+
+async function run(){
+  const btn = document.getElementById("runBtn");
+  const status = document.getElementById("status");
+  btn.disabled = true;
+  status.textContent = "⏳ OSRM 問い合わせ中…";
+  document.getElementById("resultArea").style.display = "none";
+
+  try {
+    const coords = [START, ...STORES];
+    const cs = coords.map(c => c.lo + "," + c.la).join(";");
+    const url = OSRM + "/trip/v1/foot/" + cs + "?roundtrip=false&source=first&geometries=geojson&overview=false";
+    document.getElementById("reqUrl").textContent = url;
+
+    const r = await fetch(url);
+    if(!r.ok) throw new Error("HTTP " + r.status + " " + r.statusText);
+
+    const j = await r.json();
+    if(j.code !== "Ok") throw new Error("OSRM error: " + (j.message || j.code));
+
+    // 正しい order 計算
+    const order = j.waypoints
+      .map((wp, i) => ({wpi: wp.waypoint_index, input: i}))
+      .sort((a, b) => a.wpi - b.wpi)
+      .map(x => x.input);
+
+    // 訪問順表示
+    const orderList = document.getElementById("orderList");
+    orderList.innerHTML = "";
+    order.forEach((inputIdx, visitOrder) => {
+      const d = document.createElement("div");
+      d.className = "order-item " + (inputIdx === 0 ? "start" : "store");
+      const name = coords[inputIdx].n;
+      const la = coords[inputIdx].la;
+      const lo = coords[inputIdx].lo;
+      d.textContent = `${visitOrder + 1}番目: [入力${inputIdx}] ${name}  (${la}, ${lo})`;
+      orderList.appendChild(d);
+    });
+
+    const dist = j.trips[0].distance;
+    const dur = j.trips[0].duration;
+    document.getElementById("dist").textContent = (dist / 1000).toFixed(2) + " km";
+    document.getElementById("time").textContent = Math.round(dist / 80) + " 分（80m/分換算）";
+
+    document.getElementById("result").textContent = JSON.stringify(
+      {waypoints: j.waypoints, trip_distance: dist, trip_duration: dur}, null, 2
+    );
+
+    document.getElementById("resultArea").style.display = "block";
+    status.textContent = "✅ 完了";
+  } catch(e) {
+    status.innerHTML = '<span class="err">❌ ' + e.message + '</span>';
+  } finally {
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
