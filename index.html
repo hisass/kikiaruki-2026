@@ -18,7 +18,7 @@
 --gld:#d4a050;--gldbg:#3a2a1a;--gldb:#8a6a3a;
 --pl:#d4c870;--plbg:#3a3a10;--plb:#5a5a10;
 --grn:#6c6;--grnbg:#2a4a2a;
---dop:.5;--hbg:linear-gradient(135deg,#1a0a0a,#2a1215,#1a0a0a);
+--dop:.75;--hbg:linear-gradient(135deg,#1a0a0a,#2a1215,#1a0a0a);
 --pbrd:#3a2a1a;--navbg:linear-gradient(135deg,#8b2020,#a03030);
 --schk:#4a3a2a;--soff:#3a3020;--tickbg:#1a1510;--ticktx:#d4a050;
 }
@@ -29,7 +29,7 @@
 --gld:#8a6a20;--gldbg:#f5ecd0;--gldb:#c8a040;
 --pl:#6a6a10;--plbg:#f0f0d0;--plb:#a0a040;
 --grn:#2a7a2a;--grnbg:#d8f0d8;
---dop:.45;--hbg:linear-gradient(135deg,#f8f0e0,#f5e8e0,#f8f0e0);
+--dop:.72;--hbg:linear-gradient(135deg,#f8f0e0,#f5e8e0,#f8f0e0);
 --pbrd:#d8c8b0;--navbg:linear-gradient(135deg,#c8202a,#d83838);
 --schk:#c8b8a0;--soff:#d8d0c0;--tickbg:#f8f0d8;--ticktx:#8a6a10;
 }
@@ -671,7 +671,7 @@ function toggleOpen(id){openId=openId===id?null:id;render()}
 function togglePlan(id,e){e&&e.stopPropagation();if(ip(id)){D.pl.ids=D.pl.ids.filter(x=>x!==id);D.pl.opt=false;D.pl.td=null}else{D.pl.ids.push(id);D.pl.opt=false;D.pl.td=null}save();render()}
 
 function toggleVisit(id,e){e&&e.stopPropagation();const st=gs(id);st.v=!st.v;st.vt=st.v?now():null;save();
-if(st.v)showToast("✅ "+now()+" チェックイン！");render()}
+if(st.v){openId=id;showToast("✅ "+now()+" チェックイン！")}render()}
 
 function toggleDrink(sid,di,e){e&&e.stopPropagation();const st=gs(sid);if(!st.dr[di])st.dr[di]={c:0,t:null,r:0};const d=st.dr[di];if(d.c===0){d.c=1;d.t=now()}else{d.c=0;d.t=null;d.r=0}save();render()}
 function addCup(sid,di,delta,e){e&&e.stopPropagation();const st=gs(sid);if(!st.dr[di])st.dr[di]={c:0,t:null,r:0};const d=st.dr[di];d.c=Math.max(0,d.c+delta);if(d.c>0&&!d.t)d.t=now();if(d.c===0){d.t=null;d.r=0}save();render()}
