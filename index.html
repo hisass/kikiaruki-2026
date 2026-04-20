@@ -553,9 +553,10 @@ try{const cs=unvisitedCoords.map(c=>c.lo+","+c.la).join(";");
 const r=await fetch(OSRM+"/route/v1/foot/"+cs+"?overview=full&geometries=geojson");
 const j=await r.json();
 if(j.code==="Ok"&&j.routes[0])routeLatLngs=j.routes[0].geometry.coordinates.map(c=>[c[1],c[0]])}catch(e){}
-const poly=L.polyline(routeLatLngs,{color:'#f59e0b',weight:3,opacity:0.8}).addTo(_leafMap);_routeLayers.push(poly);
+const poly=L.polyline(routeLatLngs,{color:'#2563eb',weight:5,opacity:0.9}).addTo(_leafMap);_routeLayers.push(poly);
 _leafMap.fitBounds(poly.getBounds(),{padding:[20,20]});
-if(pos){_leafPosMarker=L.circleMarker([pos.lat,pos.lng],{radius:7,color:"#4a90e2",fillColor:"#4a90e2",fillOpacity:0.8}).addTo(_leafMap).bindPopup("現在地")}
+const showPos=pos||(await new Promise(res=>{if(!navigator.geolocation)return res(null);navigator.geolocation.getCurrentPosition(p=>{pos={lat:p.coords.latitude,lng:p.coords.longitude};res(pos)},()=>res(null),{timeout:4000})}));
+if(showPos){_leafPosMarker=L.circleMarker([showPos.lat,showPos.lng],{radius:10,color:"#2563eb",weight:3,fillColor:"#ffffff",fillOpacity:1}).addTo(_leafMap).bindPopup("📍 現在地").openPopup()}
 },100)}
 
 function movePlan(id,dir,e){
