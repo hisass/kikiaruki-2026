@@ -427,6 +427,7 @@ button,input,textarea,select{font-family:inherit}
 <button class="cbtn" onclick="setRecView('store')">🏠 店別</button>
 <button class="cbtn" onclick="setRecView('sake')">🍶 酒別</button>
 <button class="cbtn" onclick="setRecView('timeline')">⏱ タイムライン</button>
+<button class="cbtn" onclick="generateReport()">📊 レポート</button>
 </div>
 
 <!-- Cards -->
@@ -926,6 +927,107 @@ if(ev.stars)h+=' <span class="tl-stars">'+"★".repeat(ev.stars)+'</span>';
 if(ev.cups&&ev.cups>1)h+=' ×'+ev.cups;
 h+='</span></div>'});
 h+='</div>';c.innerHTML=h}
+
+/* ── Report Generator ── */
+function generateReport(){
+const W=600,H=720;
+const cv=document.createElement('canvas');cv.width=W;cv.height=H;
+const ctx=cv.getContext('2d');
+const F='"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif';
+
+// Data
+const name=D.usr.name||'名無し';
+const visitCount=S.filter(s=>gs(s.id).v).length;
+const cups=tc();
+let foodCount=0;S.forEach(s=>{Object.values(gs(s.id).fr||{}).forEach(f=>{if(f.c>0)foodCount+=f.c})});
+let sakes=[];S.forEach(s=>{s.s.forEach((sk,i)=>{const dk=gs(s.id).dr[i];if(dk&&dk.c>0)sakes.push({n:sk.n,cups:dk.c,rating:dk.r})})});
+sakes.sort((a,b)=>b.rating-a.rating||b.cups-a.cups);
+let foods=[];S.forEach(s=>{s.f.forEach((f,fi)=>{const fk=gs(s.id).fr[fi];if(fk&&fk.c>0)foods.push({n:f.n,cups:fk.c,rating:fk.r})})});
+foods.sort((a,b)=>b.rating-a.rating||b.cups-a.cups);
+const returnCount=S.filter(s=>gs(s.id).wr).length;
+const distKm=D.pl.td?(D.pl.td/1000).toFixed(1):null;
+const bacPeak=D.usr.weight&&cups>0?((cups*10.7/(D.usr.weight*1000*(D.usr.gender==="f"?0.55:0.68)))*100).toFixed(2):null;
+let times=[];S.forEach(s=>{const st=gs(s.id);if(st.vt)times.push(st.vt)});times.sort();
+
+// Background
+const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#1e1428');bg.addColorStop(1,'#0d0a18');
+ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+// Subtle diagonal lines
+ctx.strokeStyle='rgba(212,160,23,0.04)';ctx.lineWidth=1;
+for(let x=-H;x<W+H;x+=28){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+H,H);ctx.stroke()}
+
+// Border
+ctx.strokeStyle='#d4a017';ctx.lineWidth=2.5;
+ctx.beginPath();const[bx,by,bw,bh,br]=[18,18,W-36,H-36,14];
+ctx.moveTo(bx+br,by);ctx.lineTo(bx+bw-br,by);ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+br);
+ctx.lineTo(bx+bw,by+bh-br);ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-br,by+bh);
+ctx.lineTo(bx+br,by+bh);ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-br);
+ctx.lineTo(bx,by+br);ctx.quadraticCurveTo(bx,by,bx+br,by);ctx.closePath();ctx.stroke();
+
+// Inner top accent bar
+const abg=ctx.createLinearGradient(0,0,W,0);abg.addColorStop(0,'rgba(212,160,23,0)');abg.addColorStop(0.5,'rgba(212,160,23,0.25)');abg.addColorStop(1,'rgba(212,160,23,0)');
+ctx.fillStyle=abg;ctx.fillRect(18,18,W-36,4);
+
+function div(y){ctx.strokeStyle='rgba(212,160,23,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,5]);ctx.beginPath();ctx.moveTo(44,y);ctx.lineTo(W-44,y);ctx.stroke();ctx.setLineDash([])}
+
+function trunc(s,maxW,font){ctx.font=font||'bold 16px '+F;const m=ctx.measureText(s);if(m.width<=maxW)return s;let t=s;while(ctx.measureText(t+'…').width>maxW&&t.length>1)t=t.slice(0,-1);return t+'…'}
+
+// === Header ===
+ctx.textAlign='center';
+ctx.fillStyle='#d4a017';ctx.font='bold 30px '+F;ctx.fillText('🍶 利き歩き2026',W/2,76);
+ctx.fillStyle='rgba(212,160,23,0.5)';ctx.font='bold 14px sans-serif';ctx.letterSpacing='4px';ctx.fillText('R E P O R T',W/2,100);ctx.letterSpacing='0px';
+ctx.fillStyle='#e8dfc8';ctx.font='bold 20px '+F;ctx.fillText(name,W/2,130);
+ctx.fillStyle='#7060a0';ctx.font='13px sans-serif';ctx.fillText('2026.04.25 日本橋エリア 日本酒利き歩き',W/2,152);
+div(168);
+
+// === Big Stats ===
+function bigStat(x,y,val,lbl){
+ctx.textAlign='center';
+ctx.fillStyle='#d4a017';ctx.font='bold 44px '+F;ctx.fillText(val,x,y);
+ctx.fillStyle='#8878a8';ctx.font='13px sans-serif';ctx.fillText(lbl,x,y+22)}
+bigStat(W*0.2,230,visitCount+'/52','店訪問');
+bigStat(W*0.5,230,cups+'杯','飲んだ酒');
+bigStat(W*0.8,230,foodCount+'品','フード');
+if(distKm){ctx.textAlign='center';ctx.fillStyle='#9080b0';ctx.font='15px sans-serif';ctx.fillText('🚶 歩行 '+distKm+' km',W/2,278)}
+div(296);
+
+// === Highlights ===
+function hlRow(y,icon,lbl,val){
+ctx.textAlign='left';
+ctx.fillStyle='#d4a017';ctx.font='bold 13px sans-serif';ctx.fillText(icon+' '+lbl,46,y);
+ctx.fillStyle='#ffffff';ctx.font='bold 17px '+F;
+ctx.fillText(trunc(val,W-280,'bold 17px '+F),210,y)}
+hlRow(335,'🏆','推し酒',sakes.length?sakes[0].n:'—');
+if(sakes.length){ctx.fillStyle='#d4a017';ctx.font='14px sans-serif';ctx.textAlign='left';ctx.fillText('★'.repeat(sakes[0].rating),46,354)}
+hlRow(385,'🏆','推しフード',foods.length?foods[0].n:'—');
+if(foods.length){ctx.fillStyle='#d4a017';ctx.font='14px sans-serif';ctx.textAlign='left';ctx.fillText('★'.repeat(foods[0].rating),46,404)}
+div(420);
+
+// === Details ===
+function dtRow(y,lbl,val){
+ctx.textAlign='left';ctx.fillStyle='#7060a0';ctx.font='14px sans-serif';ctx.fillText(lbl,46,y);
+ctx.textAlign='right';ctx.fillStyle='#ddd0f0';ctx.font='bold 15px '+F;ctx.fillText(val,W-46,y);ctx.textAlign='left'}
+dtRow(454,'⭐ また行きたい',returnCount+'店');
+if(bacPeak)dtRow(482,'🍶 BAC推定ピーク',bacPeak+'%');
+if(times.length>=2)dtRow(510,'⏰ 活動時間',times[0]+' → '+times[times.length-1]);
+else if(times.length===1)dtRow(510,'⏰ チェックイン',times[0]+'〜');
+div(528);
+
+// === Footer ===
+ctx.textAlign='center';
+ctx.fillStyle='#d4a017';ctx.font='bold 17px sans-serif';ctx.fillText('#利き歩き2026 #日本橋',W/2,562);
+ctx.fillStyle='rgba(212,160,23,0.4)';ctx.font='11px sans-serif';ctx.fillText('利き歩きナビ2026 — kikiaruki.app',W/2,586);
+
+// Sake count small
+if(sakes.length){ctx.textAlign='center';ctx.fillStyle='#504070';ctx.font='11px sans-serif';ctx.fillText(sakes.length+'銘柄を制覇',W/2,608)}
+
+// Save/Share
+cv.toBlob(blob=>{
+const file=new File([blob],'kikiaruki2026_report.png',{type:'image/png'});
+if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+navigator.share({title:'利き歩き2026 REPORT',text:name+'の利き歩き記録 #利き歩き2026',files:[file]}).catch(()=>{})
+}else{const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='kikiaruki2026_report.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)}
+},'image/png')}
 
 /* ── Facilities Tab ── */
 function renderFacilities(){
