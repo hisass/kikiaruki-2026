@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 :root{
 --bg:#0f0f0f;--bg2:#1c1816;--bg3:#151210;--brd:#2a2420;--brd2:#3a2020;
@@ -212,6 +214,18 @@ button,input,textarea,select{font-family:inherit}
 .fac-dist{font-size:9px;color:var(--tx3)}
 .fac-btn{background:var(--bg3);border:1px solid var(--brd);border-radius:4px;padding:4px 8px;font-size:9px;color:var(--tx2);cursor:pointer}
 
+.map-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;flex-direction:column;align-items:stretch}
+.map-modal-bg.hidden{display:none}
+.map-modal-header{background:var(--bg2);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--brd);flex-shrink:0}
+.map-modal-title{font-size:13px;font-weight:700;color:var(--tx)}
+.map-modal-sub{font-size:10px;color:var(--tx3);margin-top:1px}
+.map-modal-close{background:var(--bg3);border:1px solid var(--brd);border-radius:6px;color:var(--tx2);font-size:13px;padding:4px 10px;cursor:pointer}
+.map-modal-actions{background:var(--bg2);padding:6px 8px;display:flex;gap:6px;border-top:1px solid var(--brd);flex-shrink:0}
+.map-modal-actions .nav-btn{flex:1;border:none;border-radius:5px;padding:8px 2px;font-size:10px;font-weight:700;cursor:pointer}
+.map-modal-actions .nav-btn.route{background:var(--navbg);color:#fff}
+.map-modal-actions .nav-btn.pin{background:var(--bg3);color:var(--tx2);border:1px solid var(--brd)}
+#mapContainer{flex:1;min-height:0}
+
 </style>
 </head>
 <body>
@@ -276,6 +290,19 @@ button,input,textarea,select{font-family:inherit}
 </div>
 </div>
 
+
+<!-- Map Modal -->
+<div class="map-modal-bg hidden" id="mapModal">
+<div class="map-modal-header">
+<div>
+<div class="map-modal-title" id="mapModalTitle"></div>
+<div class="map-modal-sub" id="mapModalSub"></div>
+</div>
+<button class="map-modal-close" onclick="closeMapModal()">✕ 閉じる</button>
+</div>
+<div id="mapContainer"></div>
+<div class="map-modal-actions" id="mapModalActions"></div>
+</div>
 
 <!-- Help Modal -->
 <div class="modal-bg" id="helpModal">
@@ -469,6 +496,30 @@ function buildFurIndex(f){return[f.n,f.b||"","振舞酒"].join(" ").toLowerCase(
 
 function navUrl(la,lo){return D.mp==="apple"?"https://maps.apple.com/?daddr="+la+","+lo+"&dirflg=w":"https://www.google.com/maps/dir/?api=1&destination="+la+","+lo+"&travelmode=walking"}
 function pinUrl(la,lo,nm){return D.mp==="apple"?"https://maps.apple.com/?ll="+la+","+lo+"&q="+encodeURIComponent(nm):"https://www.google.com/maps/search/?api=1&query="+la+","+lo}
+
+/* ── In-app Map ── */
+let _leafMap=null,_leafMarker=null,_leafPosMarker=null;
+function showStoreMap(la,lo,nm,sub){
+const modal=document.getElementById("mapModal");
+document.getElementById("mapModalTitle").textContent=nm;
+document.getElementById("mapModalSub").textContent=sub||"";
+const actions=document.getElementById("mapModalActions");
+actions.innerHTML='<button class="nav-btn route" onclick="window.open(\''+navUrl(la,lo)+'\',\'_blank\')">'+(D.mp==="apple"?"🍎 Mapsナビ":"🗺 Googleナビ")+'</button>'
+  +'<button class="nav-btn pin" onclick="window.open(\''+pinUrl(la,lo,nm)+'\',\'_blank\')">🗺 外部地図</button>';
+modal.classList.remove("hidden");
+if(!_leafMap){
+_leafMap=L.map("mapContainer",{zoomControl:true,attributionControl:false});
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(_leafMap)}
+setTimeout(()=>{
+_leafMap.invalidateSize();
+if(_leafMarker)_leafMarker.remove();
+_leafMarker=L.marker([la,lo]).addTo(_leafMap).bindPopup(nm).openPopup();
+_leafMap.setView([la,lo],17);
+if(pos){
+if(_leafPosMarker)_leafPosMarker.remove();
+_leafPosMarker=L.circleMarker([pos.lat,pos.lng],{radius:7,color:"#4a90e2",fillColor:"#4a90e2",fillOpacity:0.8}).addTo(_leafMap).bindPopup("現在地")}
+},100)}
+function closeMapModal(){document.getElementById("mapModal").classList.add("hidden")}
 
 /* ── BAC ── */
 function calcBAC(){
@@ -721,8 +772,7 @@ h+='<div class="card-body'+(isO?' open':'')+'">';
 if(isO){
 if(s.ph)h+='<img src="'+s.ph+'" style="width:100%;border-radius:5px;margin-top:4px" loading="lazy" onerror="this.style.display=\'none\'">';
 h+='<div class="nav-row">';
-h+='<button class="nav-btn route" onclick="window.open(\''+navUrl(s.la,s.lo)+'\',\'_blank\')">'+(D.mp==="apple"?"🍎":"🗺")+" ナビ</button>";
-h+='<button class="nav-btn pin" onclick="window.open(\''+pinUrl(s.la,s.lo,s.n)+'\',\'_blank\')">📍 地図</button></div>';
+h+='<button class="nav-btn route" onclick="showStoreMap('+s.la+','+s.lo+',\''+s.n.replace(/'/g,"\\'")+'\',\''+s.b.replace(/'/g,"\\'")+' ('+s.p+')\')">🗺 地図・ナビ</button></div>';
 if(st.vt)h+='<div class="visit-time">✅ '+st.vt+' チェックイン</div>';
 
 // Furumai drink tracking
@@ -835,7 +885,7 @@ const d=fd(gd(pos.lat,pos.lng,f.la,f.lo));
 h+='<div class="fac-card"><span class="fac-icon">'+f.t+'</span>';
 h+='<div class="fac-info"><div class="fac-nm">'+f.n+'</div>';
 h+='<div class="fac-dist">📍 '+d+'</div>';
-h+='</div><button class="fac-btn" onclick="window.open(\''+pinUrl(f.la,f.lo,f.n)+'\',\'_blank\')">地図</button></div>'})}
+h+='</div><button class="fac-btn" onclick="showStoreMap('+f.la+','+f.lo+',\''+f.n.replace(/'/g,"\\'")+'\',\'\')">地図</button></div>'})}
 else{
 ["🚻","🏪","💧"].forEach(t=>{
 const label=t==="🚻"?"トイレ":t==="🏪"?"コンビニ":"水飲み場";
@@ -847,7 +897,7 @@ const d=pos?fd(gd(pos.lat,pos.lng,f.la,f.lo)):"";
 h+='<div class="fac-card"><span class="fac-icon">'+f.t+'</span>';
 h+='<div class="fac-info"><div class="fac-nm">'+f.n+'</div>';
 if(d)h+='<div class="fac-dist">📍 '+d+'</div>';
-h+='</div><button class="fac-btn" onclick="window.open(\''+pinUrl(f.la,f.lo,f.n)+'\',\'_blank\')">地図</button></div>'})})}
+h+='</div><button class="fac-btn" onclick="showStoreMap('+f.la+','+f.lo+',\''+f.n.replace(/'/g,"\\'")+'\',\'\')">地図</button></div>'})})}
 // Furumai moved to all-stores tab
 h+='</div>';c.innerHTML=h}
 
