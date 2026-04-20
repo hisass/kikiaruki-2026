@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pkill -f 'python.*8888' 2>/dev/null; /opt/homebrew/opt/python@3.14/bin/python3 -m http.server 8888 --directory /Users/hisa/Projects/kikiaruki-2026 &>/dev/null & sleep 1 && curl -s -o /dev/null -w '{\"systemMessage\":\"✅ 開発サーバー起動済み http://localhost:8888\"}' http://localhost:8888 || echo '{\"systemMessage\":\"⚠️ 開発サーバーの起動に失敗しました\"}'",
+            "statusMessage": "開発サーバーを起動中..."
+          }
+        ]
+      }
+    ]
+  }
+}
