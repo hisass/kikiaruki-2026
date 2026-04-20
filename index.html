@@ -119,6 +119,7 @@ button,input,textarea,select{font-family:inherit}
 .card-rt{display:flex;align-items:center;gap:4px;flex-shrink:0;padding-top:1px}
 .plbtn{width:24px;height:24px;border-radius:4px;border:1px solid var(--plb);background:transparent;color:var(--plb);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .plbtn.on{background:var(--plbg);border-color:var(--pl);color:var(--pl)}
+.reorder-btn{width:18px;height:24px;border:none;background:none;color:var(--tx3);font-size:13px;cursor:pointer;padding:0;line-height:1}
 .chk{width:24px;height:24px;border-radius:50%;border:1px solid var(--schk);background:transparent;color:transparent;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .chk.on{border-color:var(--grn);background:var(--grnbg);color:var(--grn)}
 .arrow{font-size:9px;color:var(--tx3);transition:transform .2s}
@@ -399,7 +400,7 @@ button,input,textarea,select{font-family:inherit}
 <div style="display:flex;gap:4px;margin-top:4px">
 <button class="ri-btn pri" onclick="optimizeRoute()">🔄 最適化</button>
 <button class="ri-btn sec" onclick="reoptFromHere()">📍 現在地から</button>
-<button class="ri-btn sec" onclick="openMapRoute()">🗺 地図で表示</button>
+<button class="ri-btn sec" onclick="showRouteMap()">🗺 ルート地図</button>
 <button class="ri-btn sec" onclick="sharePlan()">📤 共有</button>
 </div>
 </div>
@@ -498,7 +499,7 @@ function navUrl(la,lo){return D.mp==="apple"?"https://maps.apple.com/?daddr="+la
 function pinUrl(la,lo,nm){return D.mp==="apple"?"https://maps.apple.com/?ll="+la+","+lo+"&q="+encodeURIComponent(nm):"https://www.google.com/maps/search/?api=1&query="+la+","+lo}
 
 /* ── In-app Map ── */
-let _leafMap=null,_leafMarker=null,_leafPosMarker=null;
+let _leafMap=null,_leafMarker=null,_leafPosMarker=null,_routeLayers=[];
 function showStoreMap(la,lo,nm,sub){
 const modal=document.getElementById("mapModal");
 document.getElementById("mapModalTitle").textContent=nm;
@@ -512,6 +513,7 @@ _leafMap=L.map("mapContainer",{zoomControl:true,attributionControl:false});
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(_leafMap)}
 setTimeout(()=>{
 _leafMap.invalidateSize();
+_routeLayers.forEach(l=>l.remove());_routeLayers=[];
 if(_leafMarker)_leafMarker.remove();
 _leafMarker=L.marker([la,lo]).addTo(_leafMap).bindPopup(nm).openPopup();
 _leafMap.setView([la,lo],17);
@@ -520,6 +522,42 @@ if(_leafPosMarker)_leafPosMarker.remove();
 _leafPosMarker=L.circleMarker([pos.lat,pos.lng],{radius:7,color:"#4a90e2",fillColor:"#4a90e2",fillOpacity:0.8}).addTo(_leafMap).bindPopup("現在地")}
 },100)}
 function closeMapModal(){document.getElementById("mapModal").classList.add("hidden")}
+
+function showRouteMap(){
+const ids=D.pl.ids;if(!ids.length){alert("プランが空です");return}
+const st=getStart();
+document.getElementById("mapModalTitle").textContent="📍 プランルート";
+document.getElementById("mapModalSub").textContent=ids.length+"店"+(D.pl.td?" / "+(D.pl.td/1000).toFixed(1)+"km":"");
+const actions=document.getElementById("mapModalActions");
+const unvisited=ids.filter(id=>!gs(id).v);
+const pts=unvisited.slice(0,10).map(id=>{const s=S.find(x=>x.id===id);return s.la+","+s.lo});
+const googleUrl=D.mp==="apple"?"https://maps.apple.com/?dirflg=w&saddr=Current+Location&daddr="+pts.join("+to:"):"https://www.google.com/maps/dir/"+pts.join("/")+"?travelmode=walking";
+actions.innerHTML='<button class="nav-btn route" onclick="window.open(\''+googleUrl+'\',\'_blank\')">'+(D.mp==="apple"?"🍎 Mapsナビ":"🗺 Googleナビ")+'</button>';
+document.getElementById("mapModal").classList.remove("hidden");
+if(!_leafMap){_leafMap=L.map("mapContainer",{zoomControl:true,attributionControl:false});L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(_leafMap)}
+setTimeout(()=>{
+_leafMap.invalidateSize();
+if(_leafMarker)_leafMarker.remove();
+if(_leafPosMarker)_leafPosMarker.remove();
+_routeLayers.forEach(l=>l.remove());_routeLayers=[];
+const startIcon=L.divIcon({className:'',html:'<div style="background:#f59e0b;color:#000;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;border:2px solid #000">S</div>',iconSize:[22,22],iconAnchor:[11,11]});
+const sm=L.marker([st.la,st.lo],{icon:startIcon}).addTo(_leafMap).bindPopup("🚩 スタート");_routeLayers.push(sm);
+const latLngs=[[st.la,st.lo]];let uIdx=0;
+ids.forEach(id=>{const s=S.find(x=>x.id===id);if(!s)return;const done=gs(id).v;const ll=[s.la,s.lo];latLngs.push(ll);
+if(done){const m=L.circleMarker(ll,{radius:9,color:"#22c55e",fillColor:"#22c55e",fillOpacity:0.85}).addTo(_leafMap).bindPopup("✅ "+s.n);_routeLayers.push(m)}
+else{uIdx++;const icon=L.divIcon({className:'',html:'<div style="background:#d4a017;color:#000;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;border:2px solid #000">'+uIdx+'</div>',iconSize:[22,22],iconAnchor:[11,11]});
+const m=L.marker(ll,{icon}).addTo(_leafMap).bindPopup(s.n);_routeLayers.push(m)}});
+const poly=L.polyline(latLngs,{color:'#f59e0b',weight:3,opacity:0.8,dashArray:'6,4'}).addTo(_leafMap);_routeLayers.push(poly);
+_leafMap.fitBounds(poly.getBounds(),{padding:[20,20]});
+if(pos){_leafPosMarker=L.circleMarker([pos.lat,pos.lng],{radius:7,color:"#4a90e2",fillColor:"#4a90e2",fillOpacity:0.8}).addTo(_leafMap).bindPopup("現在地")}
+},100)}
+
+function movePlan(id,dir,e){
+e&&e.stopPropagation();
+const i=D.pl.ids.indexOf(id);if(i<0)return;
+const ni=i+dir;if(ni<0||ni>=D.pl.ids.length)return;
+[D.pl.ids[i],D.pl.ids[ni]]=[D.pl.ids[ni],D.pl.ids[i]];
+D.pl.opt=false;D.pl.td=null;save();render()}
 
 /* ── BAC ── */
 function calcBAC(){
@@ -765,6 +803,7 @@ h+='<div class="card-bw">'+s.b+'（'+s.p+'）</div>';
 if(!isO){if(s.f.length)h+='<div class="card-pv">🍽 '+s.f.map(f=>f.n).join("、")+'</div>';
 if(tagHtml)h+='<div class="card-pv" style="margin-top:1px">'+tagHtml+'</div>'}
 h+='</div><div class="card-rt">';
+if(curTab==="plan"){h+='<button class="reorder-btn" onclick="movePlan('+s.id+',-1,event)">↑</button>';h+='<button class="reorder-btn" onclick="movePlan('+s.id+',1,event)">↓</button>';}
 if(curTab!=="log")h+='<button class="plbtn'+(inP?' on':'')+'" onclick="togglePlan('+s.id+',event)">'+(inP?"★":"＋")+'</button>';
 h+='<button class="chk'+(done?' on':'')+'" onclick="toggleVisit('+s.id+',event)">'+(done?"✓":"")+'</button>';
 h+='<span class="arrow'+(isO?' open':'')+'">▶</span></div></div>';
