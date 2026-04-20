@@ -572,9 +572,10 @@ function clearSearch(){document.getElementById("searchInput").value="";searchQ="
 let distCache={},dcTime=0;
 async function osrmTrip(coords){
 const cs=coords.map(c=>c.lo+","+c.la).join(";");
-const r=await fetch(OSRM+"/trip/v1/driving/"+cs+"?roundtrip=false&source=first&geometries=geojson&overview=false");
+const r=await fetch(OSRM+"/trip/v1/foot/"+cs+"?roundtrip=false&source=first&geometries=geojson&overview=false");
 const j=await r.json();if(j.code!=="Ok")throw new Error(j.message);
-return{order:j.waypoints.sort((a,b)=>a.waypoint_index-b.waypoint_index).map((_,i)=>i),distance:j.trips[0].distance,duration:j.trips[0].duration}}
+const order=new Array(j.waypoints.length);j.waypoints.forEach((wp,i)=>{order[wp.waypoint_index]=i});
+return{order,distance:j.trips[0].distance,duration:j.trips[0].duration}}
 
 async function updateDists(){
 if(!pos||Date.now()-dcTime<60000)return;
