@@ -511,15 +511,15 @@ modal.classList.remove("hidden");
 if(!_leafMap){
 _leafMap=L.map("mapContainer",{zoomControl:true,attributionControl:false});
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(_leafMap)}
-setTimeout(()=>{
+setTimeout(async()=>{
 _leafMap.invalidateSize();
 _routeLayers.forEach(l=>l.remove());_routeLayers=[];
 if(_leafMarker)_leafMarker.remove();
 _leafMarker=L.marker([la,lo]).addTo(_leafMap).bindPopup(nm).openPopup();
 _leafMap.setView([la,lo],17);
-if(pos){
-if(_leafPosMarker)_leafPosMarker.remove();
-_leafPosMarker=L.circleMarker([pos.lat,pos.lng],{radius:7,color:"#4a90e2",fillColor:"#4a90e2",fillOpacity:0.8}).addTo(_leafMap).bindPopup("現在地")}
+const showPos=pos||(await new Promise(res=>{if(!navigator.geolocation)return res(null);navigator.geolocation.getCurrentPosition(p=>{pos={lat:p.coords.latitude,lng:p.coords.longitude};res(pos)},()=>res(null),{timeout:4000})}));
+if(showPos){if(_leafPosMarker)_leafPosMarker.remove();
+_leafPosMarker=L.circleMarker([showPos.lat,showPos.lng],{radius:10,color:"#2563eb",weight:3,fillColor:"#ffffff",fillOpacity:1}).addTo(_leafMap).bindPopup("📍 現在地")}
 },100)}
 function closeMapModal(){document.getElementById("mapModal").classList.add("hidden")}
 
