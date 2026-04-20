@@ -535,19 +535,25 @@ const googleUrl=D.mp==="apple"?"https://maps.apple.com/?dirflg=w&saddr=Current+L
 actions.innerHTML='<button class="nav-btn route" onclick="window.open(\''+googleUrl+'\',\'_blank\')">'+(D.mp==="apple"?"🍎 Mapsナビ":"🗺 Googleナビ")+'</button>';
 document.getElementById("mapModal").classList.remove("hidden");
 if(!_leafMap){_leafMap=L.map("mapContainer",{zoomControl:true,attributionControl:false});L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(_leafMap)}
-setTimeout(()=>{
+setTimeout(async()=>{
 _leafMap.invalidateSize();
 if(_leafMarker)_leafMarker.remove();
 if(_leafPosMarker)_leafPosMarker.remove();
 _routeLayers.forEach(l=>l.remove());_routeLayers=[];
 const startIcon=L.divIcon({className:'',html:'<div style="background:#f59e0b;color:#000;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;border:2px solid #000">S</div>',iconSize:[22,22],iconAnchor:[11,11]});
 const sm=L.marker([st.la,st.lo],{icon:startIcon}).addTo(_leafMap).bindPopup("🚩 スタート");_routeLayers.push(sm);
-const latLngs=[[st.la,st.lo]];let uIdx=0;
-ids.forEach(id=>{const s=S.find(x=>x.id===id);if(!s)return;const done=gs(id).v;const ll=[s.la,s.lo];latLngs.push(ll);
+const straightLatLngs=[[st.la,st.lo]];let uIdx=0;
+ids.forEach(id=>{const s=S.find(x=>x.id===id);if(!s)return;const done=gs(id).v;const ll=[s.la,s.lo];straightLatLngs.push(ll);
 if(done){const m=L.circleMarker(ll,{radius:9,color:"#22c55e",fillColor:"#22c55e",fillOpacity:0.85}).addTo(_leafMap).bindPopup("✅ "+s.n);_routeLayers.push(m)}
 else{uIdx++;const icon=L.divIcon({className:'',html:'<div style="background:#d4a017;color:#000;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;border:2px solid #000">'+uIdx+'</div>',iconSize:[22,22],iconAnchor:[11,11]});
 const m=L.marker(ll,{icon}).addTo(_leafMap).bindPopup(s.n);_routeLayers.push(m)}});
-const poly=L.polyline(latLngs,{color:'#f59e0b',weight:3,opacity:0.8,dashArray:'6,4'}).addTo(_leafMap);_routeLayers.push(poly);
+const unvisitedCoords=[{la:st.la,lo:st.lo},...ids.filter(id=>!gs(id).v).map(id=>{const s=S.find(x=>x.id===id);return{la:s.la,lo:s.lo}})];
+let routeLatLngs=straightLatLngs;
+try{const cs=unvisitedCoords.map(c=>c.lo+","+c.la).join(";");
+const r=await fetch(OSRM+"/route/v1/foot/"+cs+"?overview=full&geometries=geojson");
+const j=await r.json();
+if(j.code==="Ok"&&j.routes[0])routeLatLngs=j.routes[0].geometry.coordinates.map(c=>[c[1],c[0]])}catch(e){}
+const poly=L.polyline(routeLatLngs,{color:'#f59e0b',weight:3,opacity:0.8}).addTo(_leafMap);_routeLayers.push(poly);
 _leafMap.fitBounds(poly.getBounds(),{padding:[20,20]});
 if(pos){_leafPosMarker=L.circleMarker([pos.lat,pos.lng],{radius:7,color:"#4a90e2",fillColor:"#4a90e2",fillOpacity:0.8}).addTo(_leafMap).bindPopup("現在地")}
 },100)}
