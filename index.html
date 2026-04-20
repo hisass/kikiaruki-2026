@@ -581,7 +581,7 @@ async function updateDists(){
 if(!pos||Date.now()-dcTime<60000)return;
 const ids=S.map(s=>s.id);
 try{const cs=[pos.lng+","+pos.lat,...ids.map(id=>{const s=S.find(x=>x.id===id);return s.lo+","+s.la})].join(";");
-const r=await fetch(OSRM+"/table/v1/driving/"+cs+"?sources=0&destinations="+ids.map((_,i)=>i+1).join(";")+"&annotations=distance");
+const r=await fetch(OSRM+"/table/v1/foot/"+cs+"?sources=0&destinations="+ids.map((_,i)=>i+1).join(";")+"&annotations=distance");
 const j=await r.json();if(j.code==="Ok"){ids.forEach((id,i)=>{distCache[id]=j.distances[0][i]});dcTime=Date.now();render()}}catch(e){}}
 
 async function optimizeRoute(){
@@ -595,7 +595,7 @@ document.getElementById("riLoad").className="ri-load"}
 
 async function reoptFromHere(){
 if(!pos){alert("現在地が取得できていません");return}
-const ids=D.pl.ids.filter(id=>!gs(id).v);if(ids.length<2)return;
+const ids=D.pl.ids.filter(id=>!gs(id).v);if(ids.length<2){alert("未訪問2店以上が必要");return}
 document.getElementById("riLoad").className="ri-load show";
 try{const coords=[{la:pos.lat,lo:pos.lng},...ids.map(id=>{const s=S.find(x=>x.id===id);return{la:s.la,lo:s.lo}})];
 const r=await osrmTrip(coords);const re=r.order.slice(1).map(i=>ids[i-1]).filter(Boolean);
@@ -618,7 +618,7 @@ function setRegion(r){rFilter=r;render()}
 function setTaste(t){tFilter=tFilter===t?"all":t;render()}
 function setRecView(v){recView=v;render()}
 function toggleOpen(id){openId=openId===id?null:id;render()}
-function togglePlan(id,e){e&&e.stopPropagation();if(ip(id)){D.pl.ids=D.pl.ids.filter(x=>x!==id);D.pl.opt=false}else{D.pl.ids.push(id);D.pl.opt=false}save();render()}
+function togglePlan(id,e){e&&e.stopPropagation();if(ip(id)){D.pl.ids=D.pl.ids.filter(x=>x!==id);D.pl.opt=false;D.pl.td=null}else{D.pl.ids.push(id);D.pl.opt=false;D.pl.td=null}save();render()}
 
 function toggleVisit(id,e){e&&e.stopPropagation();const st=gs(id);st.v=!st.v;st.vt=st.v?now():null;save();
 if(st.v)showToast("✅ "+now()+" チェックイン！");render()}
