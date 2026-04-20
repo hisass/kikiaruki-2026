@@ -46,6 +46,8 @@ button,input,textarea,select{font-family:inherit}
 .bac-ind{font-size:10px;font-weight:700;margin-left:4px}
 .pbar{margin-top:4px;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden}
 .pbar-fill{height:100%;background:linear-gradient(90deg,var(--ac),var(--ac2));border-radius:2px;transition:width .4s}
+.tbar{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:2px;display:none}
+.tbar-fill{height:100%;border-radius:2px;transition:width 1s linear}
 .ctrls{display:flex;gap:3px;flex-wrap:wrap;margin-top:4px}
 .cbtn{background:var(--bg3);color:var(--tx2);border:1px solid var(--brd);border-radius:12px;padding:2px 8px;font-size:9px;font-weight:600;cursor:pointer;white-space:nowrap}
 .cbtn.on{background:var(--ac);color:#fff;border-color:var(--ac)}
@@ -358,6 +360,7 @@ button,input,textarea,select{font-family:inherit}
 <span class="stat" id="stat"></span>
 </div>
 <div class="pbar"><div class="pbar-fill" id="pbar"></div></div>
+<div class="tbar" id="tbar"><div class="tbar-fill" id="tbarFill"></div></div>
 <div class="ctrls">
 <button class="cbtn" id="sortBtn" onclick="toggleSort()">📋 番号順</button>
 <button class="cbtn" id="mapBtn" onclick="toggleMap()"></button>
@@ -683,12 +686,21 @@ function toggleReturn(sid){gs(sid).wr=!gs(sid).wr;save();render()}
 
 /* ── Timer ── */
 function updateTimer(){
-const el=document.getElementById("timerStat");if(!el)return;
+const el=document.getElementById("timerStat"),tb=document.getElementById("tbar"),tbf=document.getElementById("tbarFill");
+if(!el)return;
 const now=new Date(),start=new Date("2026-04-25T14:00:00"),end=new Date("2026-04-25T18:00:00");
 function fmt(ms){const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000),s=Math.floor((ms%60000)/1000);return(h>0?h+"時間":"")+String(m).padStart(2,"0")+"分"+String(s).padStart(2,"0")+"秒"}
-if(now<start){el.textContent="開始まで"+fmt(start-now);return}
-if(end-now<=0){el.textContent="";return}
-el.textContent="残り"+fmt(end-now)}
+if(now<start){
+el.textContent="開始まで"+fmt(start-now);
+const pct=Math.min(100,Math.max(0,(now-new Date("2026-04-25T00:00:00"))/(start-new Date("2026-04-25T00:00:00"))*100));
+tb.style.display="block";tbf.style.width=pct+"%";tbf.style.background="linear-gradient(90deg,#3b82f6,#7dd3fc)";
+return}
+const diff=end-now;
+if(diff<=0){el.textContent="";tb.style.display="none";return}
+el.textContent="残り"+fmt(diff);
+const pct=(diff/(end-start)*100);
+tb.style.display="block";tbf.style.width=pct+"%";
+tbf.style.background=pct>50?"linear-gradient(90deg,#d4a017,#f59e0b)":pct>20?"linear-gradient(90deg,#f59e0b,#ef4444)":"#ef4444"}
 
 /* ── Ticker ── */
 function updateTicker(){
