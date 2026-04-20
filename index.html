@@ -668,6 +668,7 @@ else{const url="https://www.google.com/maps/dir/"+pts.join("/")+"?travelmode=wal
 
 /* ── Actions ── */
 function setTab(t){curTab=t;openId=null;render()}
+function openStore(id){curTab='all';rFilter='all';tFilter='all';searchQ='';openId=id;render();setTimeout(()=>{const el=document.querySelector('.card-body.open');if(el)el.closest('.card').scrollIntoView({behavior:'smooth',block:'center'})},50)}
 function toggleSort(){sortDist=!sortDist;if(sortDist&&pos)updateDists();render()}
 function toggleMap(){D.mp=D.mp==="google"?"apple":"google";save();render()}
 function setStart(v){D.sp=v;D.pl.opt=false;save();render()}
@@ -914,11 +915,11 @@ const oshi=sakes.filter(s=>s.rating>=5);
 const c=document.getElementById("cards");
 let h="";
 if(oshi.length){h+='<div style="padding:6px 8px"><div class="slabel">🏆 推し酒</div>';
-oshi.forEach(s=>{h+='<div class="sake-list-item" style="cursor:pointer" onclick="setTab(\'all\');openId='+s.storeId+';render()"><div class="sake-list-name">'+s.n+'<span class="oshi-badge">🏆 推し</span></div>';
+oshi.forEach(s=>{h+='<div class="sake-list-item" style="cursor:pointer" onclick="openStore('+s.storeId+')"><div class="sake-list-name">'+s.n+'<span class="oshi-badge">🏆 推し</span></div>';
 h+='<div class="sake-list-meta">'+s.store+'｜'+s.cups+'杯'+(s.time?' '+s.time:'')+'</div>';
 h+='<div class="sake-list-stars">'+"★".repeat(s.rating)+'</div></div>'});h+='</div>'}
 h+='<div style="padding:6px 8px"><div class="slabel">🍶 飲んだ酒一覧（'+sakes.length+'種）</div>';
-sakes.forEach(s=>{h+='<div class="sake-list-item" style="cursor:pointer" onclick="setTab(\'all\');openId='+s.storeId+';render()"><div class="sake-list-name">'+s.n+'</div>';
+sakes.forEach(s=>{h+='<div class="sake-list-item" style="cursor:pointer" onclick="openStore('+s.storeId+')"><div class="sake-list-name">'+s.n+'</div>';
 h+='<div class="sake-list-meta">'+s.store+'｜'+s.cups+'杯'+(s.time?' '+s.time:'')+'</div>';
 h+='<div class="sake-list-stars">'+"★".repeat(s.rating)+"☆".repeat(5-s.rating)+'</div></div>'});
 h+='</div>';
