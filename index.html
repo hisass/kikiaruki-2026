@@ -684,10 +684,10 @@ function toggleReturn(sid){gs(sid).wr=!gs(sid).wr;save();render()}
 function updateTimer(){
 const el=document.getElementById("timerStat");if(!el)return;
 const now=new Date(),start=new Date("2026-04-25T14:00:00"),end=new Date("2026-04-25T18:00:00");
-const diff=end-now;
-if(now<start||diff<=0){el.textContent="";return}
-const h=Math.floor(diff/3600000),m=Math.floor((diff%3600000)/60000),s=Math.floor((diff%60000)/1000);
-el.textContent="残り"+(h>0?h+"時間":"")+String(m).padStart(2,"0")+"分"+String(s).padStart(2,"0")+"秒"}
+function fmt(ms){const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000),s=Math.floor((ms%60000)/1000);return(h>0?h+"時間":"")+String(m).padStart(2,"0")+"分"+String(s).padStart(2,"0")+"秒"}
+if(now<start){el.textContent="開始まで"+fmt(start-now);return}
+if(end-now<=0){el.textContent="";return}
+el.textContent="残り"+fmt(end-now)}
 
 /* ── Ticker ── */
 function updateTicker(){
