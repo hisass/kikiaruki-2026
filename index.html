@@ -952,6 +952,7 @@ let h='<div style="padding:10px">';
 events.forEach(ev=>{
 h+='<div class="tl-item '+ev.type+'" style="cursor:pointer" onclick="openStore('+ev.id+')">';
 h+='<span class="tl-time">'+ev.ts+'</span>';
+if(ev.type!=="checkin")h+='<span style="font-size:9px;color:var(--tx3);margin-right:4px;flex-shrink:0;white-space:nowrap">'+S.find(s=>s.id===ev.id)?.n+'</span>';
 h+='<span class="tl-content">'+ev.text;
 if(ev.stars)h+=' <span class="tl-stars">'+"★".repeat(ev.stars)+'</span>';
 if(ev.cups&&ev.cups>1)h+=' ×'+ev.cups;
