@@ -434,10 +434,12 @@ button,input,textarea,select{font-family:inherit}
 
 <!-- Record view toggle -->
 <div class="rec-toggle" id="recToggle" style="display:none">
-<button class="cbtn" onclick="setRecView('store')">🏠 店別</button>
-<button class="cbtn" onclick="setRecView('sake')">🍶 酒別</button>
-<button class="cbtn" onclick="setRecView('timeline')">⏱ タイムライン</button>
-<button class="cbtn" onclick="generateReport()">📊 レポート</button>
+<button class="cbtn" data-rv="store" onclick="setRecView('store')">🏠 店別</button>
+<button class="cbtn" data-rv="sake" onclick="setRecView('sake')">🍶 酒別</button>
+<button class="cbtn" data-rv="timeline" onclick="setRecView('timeline')">⏱ 時系列</button>
+<button class="cbtn" data-rv="brewery" onclick="setRecView('brewery')">🏺 蔵元</button>
+<button class="cbtn" data-rv="tastemap" onclick="setRecView('tastemap')">📊 味マップ</button>
+<button class="cbtn" onclick="generateReport()">🖼 レポート</button>
 </div>
 
 <!-- Cards -->
@@ -531,7 +533,15 @@ _leafMarker=L.marker([la,lo]).addTo(_leafMap).bindPopup(nm).openPopup();
 _leafMap.setView([la,lo],17);
 const showPos=pos||(await new Promise(res=>{if(!navigator.geolocation)return res(null);navigator.geolocation.getCurrentPosition(p=>{pos={lat:p.coords.latitude,lng:p.coords.longitude};res(pos)},()=>res(null),{timeout:4000})}));
 if(showPos){if(_leafPosMarker)_leafPosMarker.remove();
-_leafPosMarker=L.circleMarker([showPos.lat,showPos.lng],{radius:10,color:"#2563eb",weight:3,fillColor:"#ffffff",fillOpacity:1}).addTo(_leafMap).bindPopup("📍 現在地")}
+_leafPosMarker=L.circleMarker([showPos.lat,showPos.lng],{radius:10,color:"#2563eb",weight:3,fillColor:"#ffffff",fillOpacity:1}).addTo(_leafMap).bindPopup("📍 現在地");
+try{const cs=showPos.lng+","+showPos.lat+";"+lo+","+la;
+const r=await fetch(OSRM+"/route/v1/foot/"+cs+"?overview=full&geometries=geojson");
+const j=await r.json();
+if(j.code==="Ok"&&j.routes[0]){
+const coords=j.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
+const line=L.polyline(coords,{color:"#2563eb",weight:4,opacity:0.85}).addTo(_leafMap);
+_routeLayers.push(line);
+_leafMap.fitBounds(line.getBounds(),{padding:[40,40]})}}catch(e){}}
 },100)}
 function closeMapModal(){document.getElementById("mapModal").classList.add("hidden")}
 
@@ -732,7 +742,8 @@ tEl.className="ticker show";fixSticky()}
 function render(){
 applyTheme();
 const vc=S.filter(s=>gs(s.id).v).length;
-document.getElementById("stat").innerHTML=vc===52?"🎉 全店制覇！":"訪問 <b>"+vc+"</b>/52";
+let foodTotal=0;S.forEach(s=>{s.f.forEach((f,fi)=>{const fk=gs(s.id).fr[fi];if(fk&&fk.c>0&&f.p)foodTotal+=f.p*fk.c})});
+document.getElementById("stat").innerHTML=(vc===52?"🎉 全店制覇！":"訪問 <b>"+vc+"</b>/52")+(foodTotal>0?" | 🍽 ¥"+foodTotal.toLocaleString():"");
 document.getElementById("cupStat").textContent=tc();
 const bac=calcBAC();
 document.getElementById("bacInd").textContent=bac!==null?bacLabel(bac)+" "+bac.toFixed(2)+"%":"";
@@ -782,16 +793,15 @@ tf.style.display="flex"}else tf.style.display="none";
 // Record toggle
 document.getElementById("recToggle").style.display=curTab==="log"?"flex":"none";
 if(curTab==="log"){
-document.querySelectorAll("#recToggle .cbtn").forEach(b=>{b.className="cbtn"});
-document.querySelectorAll("#recToggle .cbtn")[["store","sake","timeline"].indexOf(recView)].className="cbtn on"}
+document.querySelectorAll("#recToggle [data-rv]").forEach(b=>{b.className="cbtn"+(b.dataset.rv===recView?" on":"")})}
 
 // Facility tab
 if(curTab==="fac"){renderFacilities();return}
 
-// Record - sake view
 if(curTab==="log"&&recView==="sake"){renderSakeList();return}
-// Record - timeline view
 if(curTab==="log"&&recView==="timeline"){renderTimeline();return}
+if(curTab==="log"&&recView==="brewery"){renderBreweryView();return}
+if(curTab==="log"&&recView==="tastemap"){renderTasteMap();return}
 
 // Get stores
 let stores=[];
@@ -1048,6 +1058,77 @@ if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
 navigator.share({title:'利き歩き2026 REPORT',text:name+'の利き歩き記録 #利き歩き2026',files:[file]}).catch(()=>{})
 }else{const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='kikiaruki2026_report.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)}
 },'image/png')}
+
+/* ── Record: Brewery View ── */
+function renderBreweryView(){
+const c=document.getElementById("cards");
+// Group visited stores by brewery
+const map={};
+S.forEach(s=>{const st=gs(s.id);if(!st.v)return;
+const key=s.b||s.n;
+if(!map[key])map[key]={b:s.b,p:s.p,stores:[],cups:0,ratings:[],sakes:[]};
+const entry=map[key];entry.stores.push(s.n);
+s.s.forEach((sk,i)=>{const dk=st.dr[i];if(dk&&dk.c>0){entry.cups+=dk.c;if(dk.r)entry.ratings.push(dk.r);entry.sakes.push({n:sk.n,r:dk.r,c:dk.c})}})});
+const breweries=Object.values(map).sort((a,b)=>b.cups-a.cups);
+if(!breweries.length){c.innerHTML='<div class="empty">まだ訪問していません</div>';return}
+let h='<div style="padding:6px 8px">';
+breweries.forEach(bw=>{
+const avg=bw.ratings.length?(bw.ratings.reduce((a,b)=>a+b,0)/bw.ratings.length).toFixed(1):null;
+const top=bw.sakes.sort((a,b)=>b.r-a.r||b.c-a.c)[0];
+h+='<div style="background:var(--bg2);border:1px solid var(--brd);border-radius:8px;padding:10px;margin-bottom:8px">';
+h+='<div style="font-size:13px;font-weight:700;color:var(--tx)">🏺 '+bw.b+'</div>';
+h+='<div style="font-size:10px;color:var(--tx3);margin-top:1px">'+bw.p+' | '+bw.stores.join(" / ")+'</div>';
+h+='<div style="display:flex;gap:12px;margin-top:8px;align-items:center">';
+h+='<div style="text-align:center"><div style="font-size:22px;font-weight:800;color:var(--gld)">'+bw.cups+'</div><div style="font-size:9px;color:var(--tx3)">杯</div></div>';
+if(avg)h+='<div style="text-align:center"><div style="font-size:22px;font-weight:800;color:var(--gld)">'+avg+'</div><div style="font-size:9px;color:var(--tx3)">★平均</div></div>';
+h+='<div style="flex:1;min-width:0">';
+if(top)h+='<div style="font-size:10px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🏆 '+top.n+'</div>';
+h+='<div style="font-size:10px;color:var(--tx3);margin-top:2px">'+bw.sakes.length+'銘柄</div>';
+h+='</div></div></div>'});
+h+='</div>';c.innerHTML=h}
+
+/* ── Record: Taste Map ── */
+function renderTasteMap(){
+const c=document.getElementById("cards");
+let sakes=[];
+S.forEach(s=>{const st=gs(s.id);const tag=(s.tg||[])[0]||"";
+s.s.forEach((sk,i)=>{const dk=st.dr[i];if(dk&&dk.c>0)sakes.push({n:sk.n,store:s.n,sid:s.id,cups:Math.min(dk.c,5),rating:dk.r||0,tag})})});
+if(!sakes.length){c.innerHTML='<div class="empty">まだ飲んでいません</div>';return}
+const TAG_COLOR={karakuchi:"#ef4444",umami:"#f97316",hanayaka:"#ec4899",kimoto:"#8b5cf6",jukusei:"#a16207",sparkling:"#06b6d4",shokuchu:"#22c55e",koseiha:"#f59e0b","":"#6b7280"};
+const PL=40,PR=16,PT=20,PB=36,CW=360,CH=260;
+const W=CW+PL+PR,H=CH+PT+PB;
+const xStep=CW/5,yStep=CH/5;
+function sx(cups){return PL+xStep*(cups-0.5)}
+function sy(rating){return PT+CH-yStep*(rating-0.5)}
+let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:480px;display:block;margin:0 auto">`;
+// Background
+svg+=`<rect width="${W}" height="${H}" fill="var(--bg2)" rx="8"/>`;
+// Grid lines
+for(let i=1;i<=5;i++){
+const x=PL+xStep*i;svg+=`<line x1="${x}" y1="${PT}" x2="${x}" y2="${PT+CH}" stroke="var(--brd)" stroke-width="0.5"/>`;
+const y=PT+yStep*i;svg+=`<line x1="${PL}" y1="${y}" x2="${PL+CW}" y2="${y}" stroke="var(--brd)" stroke-width="0.5"/>`}
+// Axis labels
+for(let i=1;i<=5;i++){
+svg+=`<text x="${sx(i)}" y="${PT+CH+22}" text-anchor="middle" font-size="11" fill="var(--tx3)">${i}杯</text>`;
+svg+=`<text x="${PL-6}" y="${sy(i)+4}" text-anchor="end" font-size="11" fill="var(--tx3)">${'★'.repeat(i)}</text>`}
+// Axis titles
+svg+=`<text x="${PL+CW/2}" y="${H-2}" text-anchor="middle" font-size="11" fill="var(--tx2)">杯数</text>`;
+svg+=`<text x="10" y="${PT+CH/2}" text-anchor="middle" font-size="11" fill="var(--tx2)" transform="rotate(-90,10,${PT+CH/2})">評価</text>`;
+// Jitter to avoid overlap
+const placed=[];
+sakes.forEach(s=>{
+let jx=(Math.random()-0.5)*14,jy=(Math.random()-0.5)*14;
+const x=sx(s.cups||1)+jx,y=sy(s.rating||0)+jy;
+const col=TAG_COLOR[s.tag]||"#6b7280";
+svg+=`<circle cx="${x}" cy="${y}" r="7" fill="${col}" fill-opacity="0.85" stroke="var(--bg)" stroke-width="1.5" onclick="openStore(${s.sid})"><title>${s.n}｜${s.store}</title></circle>`});
+// Legend
+const tags=Object.entries(TAG_COLOR).filter(([k])=>k&&sakes.some(s=>s.tag===k));
+tags.forEach(([k,col],i)=>{
+const lx=PL+(i%4)*(CW/4),ly=PT+CH+42+Math.floor(i/4)*16;
+svg+=`<circle cx="${lx+6}" cy="${ly-4}" r="5" fill="${col}"/>`;
+svg+=`<text x="${lx+14}" y="${ly}" font-size="10" fill="var(--tx2)">${TAGS[k]||k}</text>`});
+svg+='</svg>';
+c.innerHTML=`<div style="padding:8px"><div class="slabel" style="margin-bottom:6px">📊 飲んだ酒 味マップ（タップで店へ）</div>${svg}<div style="font-size:9px;color:var(--tx3);margin-top:4px;text-align:center">X=杯数 Y=★評価 色=店の味わいタグ</div></div>`}
 
 /* ── Facilities Tab ── */
 function renderFacilities(){
