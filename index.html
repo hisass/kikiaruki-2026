@@ -507,7 +507,8 @@ function getStart(){if(D.sp==="gps"&&pos)return{la:pos.lat,lo:pos.lng};return ST
 
 function isFur(id){return id>52}
 function getFurById(id){return FUR.find(function(f){return f.id===id})}
-function buildFurIndex(f){return[f.n,f.b||"","振舞酒"].join(" ").toLowerCase()}
+function toHira(s){return(s||"").replace(/[\u30A1-\u30F6]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60)).toLowerCase()}
+function buildFurIndex(f){return toHira([f.n,f.b||"","振舞酒"].join(" "))}
 
 function navUrl(la,lo){return D.mp==="apple"?"https://maps.apple.com/?daddr="+la+","+lo+"&dirflg=w":"https://www.google.com/maps/dir/?api=1&destination="+la+","+lo+"&travelmode=walking"}
 function pinUrl(la,lo,nm){return D.mp==="apple"?"https://maps.apple.com/?ll="+la+","+lo+"&q="+encodeURIComponent(nm):"https://www.google.com/maps/search/?api=1&query="+la+","+lo}
@@ -630,8 +631,8 @@ function closeModal(id){document.getElementById(id).className="modal-bg"}
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.className="toast show";setTimeout(()=>t.className="toast",1500)}
 
 /* ── Search ── */
-function buildIndex(s){return[s.n,s.b,s.p,...s.s.map(sk=>sk.n),...s.f.map(f=>f.n),...(s.tg||[]).map(t=>TAGS[t]||"")].join(" ").toLowerCase()}
-function onSearch(){searchQ=document.getElementById("searchInput").value.toLowerCase().trim();
+function buildIndex(s){return toHira([s.n,s.b,s.p,...s.s.map(sk=>sk.n),...s.f.map(f=>f.n),...(s.tg||[]).map(t=>TAGS[t]||"")].join(" "))}
+function onSearch(){searchQ=toHira(document.getElementById("searchInput").value.trim());
 document.getElementById("searchClear").style.display=searchQ?"inline":"none";render()}
 function clearSearch(){document.getElementById("searchInput").value="";searchQ="";document.getElementById("searchClear").style.display="none";render()}
 
