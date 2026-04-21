@@ -950,7 +950,7 @@ const c=document.getElementById("cards");
 if(!events.length){c.innerHTML='<div class="empty">タイムラインに表示するイベントがありません</div>';return}
 let h='<div style="padding:10px">';
 events.forEach(ev=>{
-h+='<div class="tl-item '+ev.type+'" onclick="toggleOpen('+ev.id+')">';
+h+='<div class="tl-item '+ev.type+'" style="cursor:pointer" onclick="openStore('+ev.id+')">';
 h+='<span class="tl-time">'+ev.ts+'</span>';
 h+='<span class="tl-content">'+ev.text;
 if(ev.stars)h+=' <span class="tl-stars">'+"★".repeat(ev.stars)+'</span>';
