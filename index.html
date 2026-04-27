@@ -6,7 +6,13 @@
 <title>利き歩きナビ 2026 v4</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="利き歩きナビ">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f0f0f">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -1431,6 +1437,13 @@ ticker.style.top=hh+"px";
 const th=ticker.offsetHeight||0;
 search.style.top=(hh+th)+"px";
 tabs.style.top=(hh+th+search.offsetHeight)+"px"}
+
+/* ── Service Worker ── */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
 
 /* ── Init ── */
 load();handleUrlParams();

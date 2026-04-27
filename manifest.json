@@ -1,0 +1,25 @@
+{
+  "name": "日本酒利き歩きナビ2026",
+  "short_name": "利き歩きナビ",
+  "description": "日本橋エリア 日本酒利き歩き専用ナビ",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#0f0f0f",
+  "orientation": "portrait",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
